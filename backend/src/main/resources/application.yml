@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: home-interior-safety-design
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/home_design}
+    username: ${SPRING_DATASOURCE_USERNAME:home_design}
+    password: ${SPRING_DATASOURCE_PASSWORD:home_design_password}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+app:
+  jwt-secret: ${JWT_SECRET:change-this-development-secret-to-a-long-random-value}
+  jwt-expiration-ms: 86400000
+  upload-dir: ${UPLOAD_DIR:uploads}
+  frontend-origin: ${FRONTEND_ORIGIN:http://localhost:5173}

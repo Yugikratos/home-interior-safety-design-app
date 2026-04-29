@@ -1,0 +1,14 @@
+.env
+.DS_Store
+node_modules/
+dist/
+target/
+*.class
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+uploads/
+backend/uploads/
+.idea/
+.vscode/
+*.log

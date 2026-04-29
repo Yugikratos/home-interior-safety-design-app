@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-home_design}
+      POSTGRES_USER: ${POSTGRES_USER:-home_design}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-home_design_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-home_design} -d ${POSTGRES_DB:-home_design}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-home_design}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-home_design}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-home_design_password}
+      JWT_SECRET: ${JWT_SECRET:-change-this-development-secret-to-a-long-random-value}
+      UPLOAD_DIR: ${UPLOAD_DIR:-uploads}
+      FRONTEND_ORIGIN: http://localhost:5173
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - backend_uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  backend_uploads:
