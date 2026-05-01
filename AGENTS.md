@@ -2,11 +2,12 @@
 
 ## Project Structure & Module Organization
 
-This repository contains a Phase 1 full-stack MVP.
+This repository contains a Phase 1.6+ full-stack MVP.
 
 - `frontend/`: React + Vite + TypeScript app. Source lives in `frontend/src`, with pages in `src/pages`, reusable UI in `src/components`, API calls in `src/api.ts`, and shared types in `src/types.ts`.
 - `backend/`: Spring Boot Java app. Source lives in `backend/src/main/java/com/homeinterior`, organized by `controller`, `service`, `repository`, `model`, `dto`, `security`, `config`, and `exception`.
 - `backend/src/test`: Spring Boot tests and test configuration.
+- `assets/`: README screenshot placeholders and presentation images.
 - `docker-compose.yml`: PostgreSQL, backend, and frontend services.
 - `.env.example`: safe sample environment values. Do not commit `.env`.
 
@@ -28,6 +29,8 @@ Use TypeScript strict mode and React function components. Name components in `Pa
 
 Use Java 17 conventions in the backend: classes in `PascalCase`, methods and fields in `camelCase`, and package names lowercase. Keep controller logic thin; route business rules through services and repositories.
 
+Room and furniture layout coordinates are persisted as percentages. Keep blueprint room mapping relative to the rendered blueprint image bounds, and keep furniture coordinates relative to the containing room.
+
 ## Testing Guidelines
 
 Backend tests use Spring Boot Test, JUnit 5, Spring Security Test, MockMvc, and H2. Add tests for validation, ownership checks, authentication, uploads, and service behavior when changing backend APIs.
@@ -42,4 +45,4 @@ Pull requests should include a concise summary, test commands run, linked issue 
 
 ## Security & Configuration Tips
 
-Never commit secrets. Keep JWT and database values in `.env`. Blueprint uploads are local files, limited to PDF/PNG/JPG/JPEG and 10MB. Preserve per-user project ownership checks on every project-scoped API.
+Never commit secrets. Keep JWT and database values in `.env`. Blueprint uploads are local files, limited to PDF/PNG/JPG/JPEG and 10MB. Preserve per-user project ownership checks on every project-scoped API, including rooms and furniture.

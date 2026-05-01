@@ -1,4 +1,4 @@
-import type { DesignSuggestion, Preference, Project, ProjectDetail, Room, SafetyRecommendation, UserSession } from './types';
+import type { DesignSuggestion, FurnitureItem, FurniturePayload, Preference, Project, ProjectDetail, Room, RoomPayload, SafetyRecommendation, UserSession } from './types';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
 let unauthorizedHandler: (() => void) | null = null;
@@ -83,12 +83,18 @@ export const api = {
     }
     return response.blob();
   },
-  addRoom: (token: string, id: number, payload: { name: string; type: string; length: number; width: number }) =>
+  addRoom: (token: string, id: number, payload: RoomPayload) =>
     request<Room>(`/projects/${id}/rooms`, token, { method: 'POST', body: JSON.stringify(payload) }),
-  updateRoom: (token: string, projectId: number, roomId: number, payload: { name: string; type: string; length: number; width: number }) =>
+  updateRoom: (token: string, projectId: number, roomId: number, payload: RoomPayload) =>
     request<Room>(`/projects/${projectId}/rooms/${roomId}`, token, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteRoom: (token: string, projectId: number, roomId: number) =>
     request<void>(`/projects/${projectId}/rooms/${roomId}`, token, { method: 'DELETE' }),
+  addFurniture: (token: string, projectId: number, roomId: number, payload: FurniturePayload) =>
+    request<FurnitureItem>(`/projects/${projectId}/rooms/${roomId}/furniture`, token, { method: 'POST', body: JSON.stringify(payload) }),
+  updateFurniture: (token: string, projectId: number, roomId: number, furnitureId: number, payload: FurniturePayload) =>
+    request<FurnitureItem>(`/projects/${projectId}/rooms/${roomId}/furniture/${furnitureId}`, token, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteFurniture: (token: string, projectId: number, roomId: number, furnitureId: number) =>
+    request<void>(`/projects/${projectId}/rooms/${roomId}/furniture/${furnitureId}`, token, { method: 'DELETE' }),
   savePreference: (token: string, id: number, payload: { style: string; budget: string; colorPalette: string }) =>
     request<Preference>(`/projects/${id}/preferences`, token, { method: 'POST', body: JSON.stringify(payload) }),
   suggestions: (token: string, id: number) => request<DesignSuggestion[]>(`/projects/${id}/suggestions`, token),

@@ -97,6 +97,24 @@ public class ProjectController {
         projectService.deleteRoom(id, roomId, principal.getName());
     }
 
+    @PostMapping("/{id}/rooms/{roomId}/furniture")
+    @ResponseStatus(HttpStatus.CREATED)
+    public FurnitureResponse addFurniture(@PathVariable Long id, @PathVariable Long roomId, @Valid @RequestBody FurnitureRequest request, Principal principal) {
+        return projectService.addFurniture(id, roomId, request, principal.getName());
+    }
+
+    @PutMapping("/{id}/rooms/{roomId}/furniture/{furnitureId}")
+    public FurnitureResponse updateFurniture(@PathVariable Long id, @PathVariable Long roomId, @PathVariable Long furnitureId,
+                                             @Valid @RequestBody FurnitureRequest request, Principal principal) {
+        return projectService.updateFurniture(id, roomId, furnitureId, request, principal.getName());
+    }
+
+    @DeleteMapping("/{id}/rooms/{roomId}/furniture/{furnitureId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteFurniture(@PathVariable Long id, @PathVariable Long roomId, @PathVariable Long furnitureId, Principal principal) {
+        projectService.deleteFurniture(id, roomId, furnitureId, principal.getName());
+    }
+
     @GetMapping("/{id}/preferences")
     public PreferenceResponse getPreferences(@PathVariable Long id, Principal principal) {
         return projectService.getPreference(id, principal.getName());

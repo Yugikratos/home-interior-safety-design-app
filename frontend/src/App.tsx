@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from './api';
 import { AuthPage } from './pages/AuthPage';
+import { Sidebar } from './components/Sidebar';
+import { TopHeader } from './components/TopHeader';
 import { Dashboard } from './pages/Dashboard';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import type { UserSession } from './types';
@@ -23,6 +25,7 @@ function readSavedSession() {
 export function App() {
   const [session, setSession] = useState<UserSession | null>(readSavedSession);
   const [view, setView] = useState<{ name: 'dashboard' } | { name: 'project'; id: number }>({ name: 'dashboard' });
+  const [projectMeta, setProjectMeta] = useState<{ name: string; rooms: number; ready: boolean } | null>(null);
 
   useEffect(() => {
     if (session) localStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -40,35 +43,37 @@ export function App() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand-block">
-          <div className="brand-mark">H</div>
-          <div>
-            <strong>HomeSafe</strong>
-            <span>Interior planner</span>
-          </div>
-        </div>
-        <nav className="side-nav" aria-label="Primary navigation">
-          <button className={view.name === 'dashboard' ? 'active' : ''} onClick={() => setView({ name: 'dashboard' })}>Dashboard</button>
-          <button className={view.name === 'project' ? 'active' : ''} onClick={() => setView({ name: 'dashboard' })}>Projects</button>
-        </nav>
-        <div className="sidebar-footer">
-          <span>{session.name}</span>
-          <small>{session.email}</small>
-          <button onClick={() => setSession(null)}>Logout</button>
-        </div>
-      </aside>
+      <Sidebar
+        active={view.name === 'dashboard' ? 'Dashboard' : 'Blueprints'}
+        session={session}
+        onDashboard={() => {
+          setView({ name: 'dashboard' });
+          setProjectMeta(null);
+        }}
+        onLogout={() => setSession(null)}
+      />
       <div className="content-shell">
-        <header className="topbar">
-          <div>
-            <span className="eyebrow">Phase 1 MVP</span>
-            <strong>Home Interior & Safety Design App</strong>
-          </div>
-        </header>
+        <TopHeader
+          breadcrumb={view.name === 'project' && projectMeta ? `Projects > ${projectMeta.name}` : 'Projects'}
+          title={view.name === 'project' && projectMeta ? projectMeta.name : 'Project Dashboard'}
+          status={view.name === 'project' && projectMeta?.ready ? 'Active' : 'Draft'}
+          roomsCount={view.name === 'project' ? projectMeta?.rooms ?? 0 : 0}
+          onExport={() => window.print()}
+          onPrint={() => window.print()}
+          onGenerate={() => window.dispatchEvent(new Event('home-design-generate'))}
+        />
         {view.name === 'dashboard' ? (
           <Dashboard token={session.token} onOpenProject={(id) => setView({ name: 'project', id })} />
         ) : (
-          <ProjectDetailPage token={session.token} projectId={view.id} onBack={() => setView({ name: 'dashboard' })} />
+          <ProjectDetailPage
+            token={session.token}
+            projectId={view.id}
+            onBack={() => {
+              setView({ name: 'dashboard' });
+              setProjectMeta(null);
+            }}
+            onProjectMeta={setProjectMeta}
+          />
         )}
       </div>
     </div>

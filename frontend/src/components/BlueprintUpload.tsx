@@ -10,6 +10,7 @@ export function BlueprintUpload({ token, projectId, blueprint, onUploaded }: {
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   async function submit(event: FormEvent) {
@@ -31,6 +32,7 @@ export function BlueprintUpload({ token, projectId, blueprint, onUploaded }: {
     try {
       await api.uploadBlueprint(token, projectId, file);
       setFile(null);
+      setSuccess(true);
       onUploaded();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
@@ -52,7 +54,15 @@ export function BlueprintUpload({ token, projectId, blueprint, onUploaded }: {
         <strong>{blueprint ? blueprint.originalFileName : 'No blueprint uploaded'}</strong>
         <span>{blueprint ? `${Math.round(blueprint.sizeBytes / 1024)} KB` : 'PDF, PNG, JPG, or JPEG up to 10MB'}</span>
       </div>
-      <input type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+      <input type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => {
+        setFile(e.target.files?.[0] ?? null);
+        setSuccess(false);
+      }} />
+      {success && (
+        <div className="success-state">
+          Blueprint uploaded successfully. Next, add room measurements to generate layout, suggestions, and safety recommendations.
+        </div>
+      )}
       {error && <p className="error">{error}</p>}
       <button type="submit" disabled={!file || uploading}>{uploading ? 'Uploading...' : 'Upload blueprint'}</button>
     </form>

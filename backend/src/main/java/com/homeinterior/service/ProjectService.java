@@ -33,16 +33,18 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final RoomRepository roomRepository;
+    private final FurnitureItemRepository furnitureItemRepository;
     private final BlueprintRepository blueprintRepository;
     private final DesignPreferenceRepository preferenceRepository;
     private final AppProperties properties;
 
     public ProjectService(ProjectRepository projectRepository, UserRepository userRepository, RoomRepository roomRepository,
-                          BlueprintRepository blueprintRepository, DesignPreferenceRepository preferenceRepository,
+                          FurnitureItemRepository furnitureItemRepository, BlueprintRepository blueprintRepository, DesignPreferenceRepository preferenceRepository,
                           AppProperties properties) {
         this.projectRepository = projectRepository;
         this.userRepository = userRepository;
         this.roomRepository = roomRepository;
+        this.furnitureItemRepository = furnitureItemRepository;
         this.blueprintRepository = blueprintRepository;
         this.preferenceRepository = preferenceRepository;
         this.properties = properties;
@@ -146,12 +148,46 @@ public class ProjectService {
         roomRepository.delete(room);
     }
 
+    public FurnitureResponse addFurniture(Long projectId, Long roomId, FurnitureRequest request, String email) {
+        Room room = ownedRoom(projectId, roomId, email);
+        FurnitureItem furniture = new FurnitureItem();
+        furniture.setRoom(room);
+        applyFurniture(furniture, request);
+        return toFurnitureResponse(furnitureItemRepository.save(furniture));
+    }
+
+    public FurnitureResponse updateFurniture(Long projectId, Long roomId, Long furnitureId, FurnitureRequest request, String email) {
+        ownedRoom(projectId, roomId, email);
+        FurnitureItem furniture = furnitureItemRepository.findById(furnitureId)
+                .filter(existing -> Objects.equals(existing.getRoom().getId(), roomId))
+                .filter(existing -> Objects.equals(existing.getRoom().getProject().getId(), projectId))
+                .orElseThrow(() -> new ApiNotFoundException("Furniture item not found"));
+        applyFurniture(furniture, request);
+        return toFurnitureResponse(furnitureItemRepository.save(furniture));
+    }
+
+    public void deleteFurniture(Long projectId, Long roomId, Long furnitureId, String email) {
+        ownedRoom(projectId, roomId, email);
+        FurnitureItem furniture = furnitureItemRepository.findById(furnitureId)
+                .filter(existing -> Objects.equals(existing.getRoom().getId(), roomId))
+                .filter(existing -> Objects.equals(existing.getRoom().getProject().getId(), projectId))
+                .orElseThrow(() -> new ApiNotFoundException("Furniture item not found"));
+        furnitureItemRepository.delete(furniture);
+    }
+
     private void applyRoom(Room room, RoomRequest request) {
         validateAllowed(ROOM_TYPES, request.type(), "Unsupported room type");
         room.setName(request.name().trim());
         room.setType(request.type().trim());
         room.setLength(request.length());
         room.setWidth(request.width());
+        if (hasAnyMappingValue(request)) {
+            validateMapping(request);
+            room.setMapX(request.mapX());
+            room.setMapY(request.mapY());
+            room.setMapWidth(request.mapWidth());
+            room.setMapHeight(request.mapHeight());
+        }
     }
 
     public PreferenceResponse getPreference(Long projectId, String email) {
@@ -179,6 +215,13 @@ public class ProjectService {
         return roomRepository.findByProjectIdOrderByIdAsc(projectId).stream().map(this::toRoomResponse).toList();
     }
 
+    private Room ownedRoom(Long projectId, Long roomId, String email) {
+        ownedProject(projectId, email);
+        return roomRepository.findById(roomId)
+                .filter(existing -> Objects.equals(existing.getProject().getId(), projectId))
+                .orElseThrow(() -> new ApiNotFoundException("Room not found"));
+    }
+
     private ProjectResponse toProjectResponse(Project project) {
         BlueprintResponse blueprint = blueprintRepository.findByProjectId(project.getId()).map(this::toBlueprintResponse).orElse(null);
         return new ProjectResponse(project.getId(), project.getName(), project.getDescription(), project.getCreatedAt(), blueprint);
@@ -189,7 +232,21 @@ public class ProjectService {
     }
 
     private RoomResponse toRoomResponse(Room room) {
-        return new RoomResponse(room.getId(), room.getName(), room.getType(), room.getLength(), room.getWidth());
+        return new RoomResponse(
+                room.getId(),
+                room.getName(),
+                room.getType(),
+                room.getLength(),
+                room.getWidth(),
+                room.getMapX(),
+                room.getMapY(),
+                room.getMapWidth(),
+                room.getMapHeight(),
+                furnitureItemRepository.findByRoomIdOrderByIdAsc(room.getId()).stream().map(this::toFurnitureResponse).toList());
+    }
+
+    private FurnitureResponse toFurnitureResponse(FurnitureItem furniture) {
+        return new FurnitureResponse(furniture.getId(), furniture.getType(), furniture.getXPercent(), furniture.getYPercent(), furniture.getWidthPercent(), furniture.getHeightPercent(), furniture.getRotationAngle());
     }
 
     private PreferenceResponse toPreferenceResponse(DesignPreference preference) {
@@ -200,6 +257,31 @@ public class ProjectService {
         if (value == null || !allowed.contains(value.trim().toLowerCase(Locale.ROOT))) {
             throw new ApiValidationException(message);
         }
+    }
+
+    private boolean hasAnyMappingValue(RoomRequest request) {
+        return request.mapX() != null || request.mapY() != null || request.mapWidth() != null || request.mapHeight() != null;
+    }
+
+    private void validateMapping(RoomRequest request) {
+        if (request.mapX() == null || request.mapY() == null || request.mapWidth() == null || request.mapHeight() == null) {
+            throw new ApiValidationException("Complete room mapping coordinates are required");
+        }
+        if (request.mapX() < 0 || request.mapY() < 0 || request.mapWidth() <= 0 || request.mapHeight() <= 0) {
+            throw new ApiValidationException("Room mapping coordinates must be positive");
+        }
+    }
+
+    private void applyFurniture(FurnitureItem furniture, FurnitureRequest request) {
+        furniture.setType(request.type().trim());
+        if (request.xPercent() + request.widthPercent() > 100 || request.yPercent() + request.heightPercent() > 100) {
+            throw new ApiValidationException("Furniture must stay inside room bounds");
+        }
+        furniture.setXPercent(request.xPercent());
+        furniture.setYPercent(request.yPercent());
+        furniture.setWidthPercent(request.widthPercent());
+        furniture.setHeightPercent(request.heightPercent());
+        furniture.setRotationAngle(request.rotationAngle() == null ? 0 : request.rotationAngle());
     }
 
     private void validateUpload(MultipartFile file) {

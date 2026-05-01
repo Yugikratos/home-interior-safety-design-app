@@ -1,4 +1,4 @@
-import type { DesignSuggestion } from '../types';
+import type { DesignSuggestion, Preference } from '../types';
 
 const itemIcon = (item: string) => {
   const text = item.toLowerCase();
@@ -12,16 +12,44 @@ const itemIcon = (item: string) => {
   return 'ITM';
 };
 
-export function SuggestionsView({ suggestions }: { suggestions: DesignSuggestion[] }) {
+export function SuggestionsView({ suggestions, canGenerate, hasRooms, hasPreference, preference, loading, onGenerate }: {
+  suggestions: DesignSuggestion[];
+  canGenerate: boolean;
+  hasRooms: boolean;
+  hasPreference: boolean;
+  preference: Preference | null;
+  loading: boolean;
+  onGenerate: () => void;
+}) {
+  const emptyMessage = !hasRooms
+    ? 'No rooms yet: Add room measurements to generate your 2D layout.'
+    : !hasPreference
+      ? 'No preferences yet: Save your design style and budget to generate suggestions.'
+      : 'Generate design suggestions based on your rooms and preferences.';
+
   return (
-    <section className="panel section-card">
+    <section className="panel section-card result-card suggestions-result">
       <div className="section-title">
         <span className="section-icon">ID</span>
         <div>
-          <h2>Suggestions</h2>
+          <h2>Interior Design Suggestions</h2>
           <p>Furniture and finish ideas generated from room type and style.</p>
         </div>
       </div>
+      <div className="section-actions">
+        <button type="button" onClick={onGenerate} disabled={!canGenerate || loading}>
+          {loading ? 'Generating...' : 'Generate Suggestions'}
+        </button>
+      </div>
+      {suggestions.length > 0 && <div className="ready-message">Your design suggestions are ready below</div>}
+      {suggestions.length === 0 && (
+        <div className="empty-state elevated-empty">
+          <strong>{emptyMessage}</strong>
+          <button type="button" className="primary" onClick={onGenerate} disabled={!canGenerate || loading}>
+            {loading ? 'Generating...' : 'Generate Suggestions'}
+          </button>
+        </div>
+      )}
       <div className="cards suggestion-grid">
         {suggestions.map((suggestion) => (
           <article key={suggestion.roomId} className="suggestion-card">
@@ -34,16 +62,18 @@ export function SuggestionsView({ suggestions }: { suggestions: DesignSuggestion
             </div>
             <div className="furniture-list">
               {suggestion.items.map((item) => (
-                <span key={item} className="furniture-chip">
+                <span key={item} className="furniture-chip furniture-card">
                   <strong>{itemIcon(item)}</strong>
                   {item}
                 </span>
               ))}
             </div>
             <small>{suggestion.note}</small>
+            <p className="suggestion-why">
+              Suggested because {suggestion.roomName} is a {suggestion.roomType.toLowerCase()} with a {suggestion.style.toLowerCase()} style preference and {preference?.budget.toLowerCase() ?? 'selected'} budget level.
+            </p>
           </article>
         ))}
-        {suggestions.length === 0 && <p className="muted">Add rooms to generate rule-based suggestions.</p>}
       </div>
     </section>
   );

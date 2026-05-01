@@ -6,7 +6,7 @@ export function PreferencesForm({ token, projectId, preference, onSaved }: {
   token: string;
   projectId: number;
   preference: Preference | null;
-  onSaved: () => void;
+  onSaved: () => void | Promise<void>;
 }) {
   const [style, setStyle] = useState(preference?.style ?? 'Modern');
   const [budget, setBudget] = useState(preference?.budget ?? 'Medium');
@@ -28,7 +28,7 @@ export function PreferencesForm({ token, projectId, preference, onSaved }: {
     setSaving(true);
     try {
       await api.savePreference(token, projectId, { style, budget, colorPalette });
-      onSaved();
+      await onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save preferences');
     } finally {

@@ -1,6 +1,7 @@
 package com.homeinterior.dto;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
@@ -16,8 +17,20 @@ public class ProjectDtos {
             @NotBlank @Size(max = 120) String name,
             @NotBlank @Size(max = 80) String type,
             @DecimalMin(value = "0.1") double length,
-            @DecimalMin(value = "0.1") double width) {}
-    public record RoomResponse(Long id, String name, String type, double length, double width) {}
+            @DecimalMin(value = "0.1") double width,
+            Double mapX,
+            Double mapY,
+            Double mapWidth,
+            Double mapHeight) {}
+    public record FurnitureRequest(
+            @NotBlank @Size(max = 80) String type,
+            @DecimalMin("0.0") @DecimalMax("100.0") double xPercent,
+            @DecimalMin("0.0") @DecimalMax("100.0") double yPercent,
+            @DecimalMin("1.0") @DecimalMax("100.0") double widthPercent,
+            @DecimalMin("1.0") @DecimalMax("100.0") double heightPercent,
+            Double rotationAngle) {}
+    public record FurnitureResponse(Long id, String type, double xPercent, double yPercent, double widthPercent, double heightPercent, double rotationAngle) {}
+    public record RoomResponse(Long id, String name, String type, double length, double width, Double mapX, Double mapY, Double mapWidth, Double mapHeight, List<FurnitureResponse> furniture) {}
     public record PreferenceRequest(
             @NotBlank @Size(max = 80) String style,
             @NotBlank @Size(max = 80) String budget,
