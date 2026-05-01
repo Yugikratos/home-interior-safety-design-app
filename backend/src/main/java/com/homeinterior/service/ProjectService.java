@@ -17,8 +17,16 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
@@ -29,6 +37,8 @@ public class ProjectService {
     private static final Set<String> CONTENT_TYPES = Set.of("application/pdf", "image/png", "image/jpeg");
     private static final Set<String> EXTENSIONS = Set.of(".pdf", ".png", ".jpg", ".jpeg");
     private static final long MAX_UPLOAD_BYTES = 10L * 1024L * 1024L;
+    private static final double DEFAULT_DETECTED_ROOM_LENGTH = 12.0;
+    private static final double DEFAULT_DETECTED_ROOM_WIDTH = 10.0;
 
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
@@ -148,6 +158,41 @@ public class ProjectService {
         roomRepository.delete(room);
     }
 
+    @Transactional
+    public List<RoomResponse> detectRoomsFromBlueprint(Long projectId, String email) {
+        Project project = ownedProject(projectId, email);
+        Blueprint blueprint = blueprintRepository.findByProjectId(projectId)
+                .orElseThrow(() -> new ApiNotFoundException("Blueprint not found"));
+        if (blueprint.getContentType() == null || !blueprint.getContentType().startsWith("image/")) {
+            throw new ApiValidationException("Auto detection is available for PNG and JPG blueprints only");
+        }
+
+        Path uploadDir = Path.of(properties.getUploadDir()).toAbsolutePath().normalize();
+        Path filePath = uploadDir.resolve(blueprint.getStoredFileName()).normalize();
+        if (!filePath.startsWith(uploadDir) || !Files.exists(filePath)) {
+            throw new ApiNotFoundException("Blueprint file not found");
+        }
+
+        List<BlueprintDetectionResponse> detections = requestBlueprintDetections(filePath);
+        int existingRooms = roomRepository.findByProjectIdOrderByIdAsc(projectId).size();
+        int index = 1;
+        for (BlueprintDetectionResponse detection : detections) {
+            Room room = new Room();
+            room.setProject(project);
+            room.setName("Detected Room " + (existingRooms + index));
+            room.setType("Bedroom");
+            room.setLength(DEFAULT_DETECTED_ROOM_LENGTH);
+            room.setWidth(DEFAULT_DETECTED_ROOM_WIDTH);
+            room.setMapX(detection.xPercent());
+            room.setMapY(detection.yPercent());
+            room.setMapWidth(detection.widthPercent());
+            room.setMapHeight(detection.heightPercent());
+            roomRepository.save(room);
+            index++;
+        }
+        return rooms(projectId);
+    }
+
     public FurnitureResponse addFurniture(Long projectId, Long roomId, FurnitureRequest request, String email) {
         Room room = ownedRoom(projectId, roomId, email);
         FurnitureItem furniture = new FurnitureItem();
@@ -173,6 +218,17 @@ public class ProjectService {
                 .filter(existing -> Objects.equals(existing.getRoom().getProject().getId(), projectId))
                 .orElseThrow(() -> new ApiNotFoundException("Furniture item not found"));
         furnitureItemRepository.delete(furniture);
+    }
+
+    @Transactional
+    public List<FurnitureResponse> autoArrangeFurniture(Long projectId, Long roomId, String email) {
+        Room room = ownedRoom(projectId, roomId, email);
+        furnitureItemRepository.deleteAll(furnitureItemRepository.findByRoomIdOrderByIdAsc(roomId));
+        List<FurnitureItem> arranged = autoFurnitureForRoom(room).stream()
+                .peek(item -> item.setRoom(room))
+                .map(furnitureItemRepository::save)
+                .toList();
+        return arranged.stream().map(this::toFurnitureResponse).toList();
     }
 
     private void applyRoom(Room room, RoomRequest request) {
@@ -249,6 +305,29 @@ public class ProjectService {
         return new FurnitureResponse(furniture.getId(), furniture.getType(), furniture.getXPercent(), furniture.getYPercent(), furniture.getWidthPercent(), furniture.getHeightPercent(), furniture.getRotationAngle());
     }
 
+    private List<BlueprintDetectionResponse> requestBlueprintDetections(Path filePath) {
+        try {
+            HttpHeaders fileHeaders = new HttpHeaders();
+            fileHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            HttpEntity<FileSystemResource> fileEntity = new HttpEntity<>(new FileSystemResource(filePath), fileHeaders);
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("file", fileEntity);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
+
+            ResponseEntity<BlueprintDetectionResponse[]> response = new RestTemplate().postForEntity(
+                    properties.getBlueprintProcessorUrl() + "/process-blueprint",
+                    request,
+                    BlueprintDetectionResponse[].class);
+            BlueprintDetectionResponse[] responseBody = response.getBody();
+            return responseBody == null ? List.of() : List.of(responseBody);
+        } catch (Exception ex) {
+            throw new ApiValidationException("Could not process blueprint image");
+        }
+    }
+
     private PreferenceResponse toPreferenceResponse(DesignPreference preference) {
         return new PreferenceResponse(preference.getId(), preference.getStyle(), preference.getBudget(), preference.getColorPalette());
     }
@@ -282,6 +361,37 @@ public class ProjectService {
         furniture.setWidthPercent(request.widthPercent());
         furniture.setHeightPercent(request.heightPercent());
         furniture.setRotationAngle(request.rotationAngle() == null ? 0 : request.rotationAngle());
+    }
+
+    private List<FurnitureItem> autoFurnitureForRoom(Room room) {
+        String type = room.getType().toLowerCase(Locale.ROOT);
+        boolean narrow = room.getWidth() > 0 && room.getLength() / room.getWidth() > 1.8;
+        if (type.contains("bedroom")) {
+            return narrow
+                    ? List.of(furniture("Bed", 8, 8, 42, 32, 0), furniture("Wardrobe", 70, 8, 18, 42, 0))
+                    : List.of(furniture("Bed", 8, 12, 38, 34, 0), furniture("Wardrobe", 72, 10, 18, 42, 0), furniture("Table", 52, 58, 16, 16, 0));
+        }
+        if (type.contains("living")) {
+            return List.of(furniture("Sofa", 18, 58, 34, 20, 0), furniture("TV unit", 22, 12, 30, 12, 0), furniture("Table", 38, 38, 18, 18, 0));
+        }
+        if (type.contains("dining")) {
+            return List.of(furniture("Table", 36, 34, 28, 24, 0), furniture("Sofa", 12, 72, 22, 14, 0));
+        }
+        if (type.contains("kitchen")) {
+            return List.of(furniture("Table", 36, 42, 24, 18, 0), furniture("Wardrobe", 6, 8, 18, 72, 0));
+        }
+        return List.of(furniture("Table", 38, 38, 24, 22, 0));
+    }
+
+    private FurnitureItem furniture(String type, double xPercent, double yPercent, double widthPercent, double heightPercent, double rotationAngle) {
+        FurnitureItem item = new FurnitureItem();
+        item.setType(type);
+        item.setXPercent(xPercent);
+        item.setYPercent(yPercent);
+        item.setWidthPercent(widthPercent);
+        item.setHeightPercent(heightPercent);
+        item.setRotationAngle(rotationAngle);
+        return item;
     }
 
     private void validateUpload(MultipartFile file) {

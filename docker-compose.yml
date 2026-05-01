@@ -24,11 +24,14 @@ services:
       JWT_SECRET: ${JWT_SECRET:-change-this-development-secret-to-a-long-random-value}
       UPLOAD_DIR: ${UPLOAD_DIR:-uploads}
       FRONTEND_ORIGIN: http://localhost:5173
+      BLUEPRINT_PROCESSOR_URL: http://blueprint-processor:8000
     ports:
       - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
+      blueprint-processor:
+        condition: service_started
     volumes:
       - backend_uploads:/app/uploads
 
@@ -41,6 +44,11 @@ services:
       - "5173:80"
     depends_on:
       - backend
+
+  blueprint-processor:
+    build: ./blueprint-processor
+    ports:
+      - "8000:8000"
 
 volumes:
   postgres_data:

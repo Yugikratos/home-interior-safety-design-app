@@ -1,4 +1,4 @@
-import type { DesignSuggestion, FurnitureItem, FurniturePayload, Preference, Project, ProjectDetail, Room, RoomPayload, SafetyRecommendation, UserSession } from './types';
+import type { DesignSuggestion, FurnitureItem, FurniturePayload, Preference, Project, ProjectDetail, Room, RoomLayoutScore, RoomPayload, SafetyRecommendation, UserSession } from './types';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
 let unauthorizedHandler: (() => void) | null = null;
@@ -83,6 +83,8 @@ export const api = {
     }
     return response.blob();
   },
+  detectBlueprintRooms: (token: string, id: number) =>
+    request<Room[]>(`/projects/${id}/blueprint/detect`, token, { method: 'POST' }),
   addRoom: (token: string, id: number, payload: RoomPayload) =>
     request<Room>(`/projects/${id}/rooms`, token, { method: 'POST', body: JSON.stringify(payload) }),
   updateRoom: (token: string, projectId: number, roomId: number, payload: RoomPayload) =>
@@ -95,6 +97,10 @@ export const api = {
     request<FurnitureItem>(`/projects/${projectId}/rooms/${roomId}/furniture/${furnitureId}`, token, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteFurniture: (token: string, projectId: number, roomId: number, furnitureId: number) =>
     request<void>(`/projects/${projectId}/rooms/${roomId}/furniture/${furnitureId}`, token, { method: 'DELETE' }),
+  autoArrangeFurniture: (token: string, projectId: number, roomId: number) =>
+    request<FurnitureItem[]>(`/projects/${projectId}/rooms/${roomId}/furniture/auto-arrange`, token, { method: 'POST' }),
+  roomLayoutScore: (token: string, projectId: number, roomId: number) =>
+    request<RoomLayoutScore>(`/projects/${projectId}/rooms/${roomId}/layout-score`, token),
   savePreference: (token: string, id: number, payload: { style: string; budget: string; colorPalette: string }) =>
     request<Preference>(`/projects/${id}/preferences`, token, { method: 'POST', body: JSON.stringify(payload) }),
   suggestions: (token: string, id: number) => request<DesignSuggestion[]>(`/projects/${id}/suggestions`, token),

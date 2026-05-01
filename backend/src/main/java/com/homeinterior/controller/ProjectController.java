@@ -4,6 +4,7 @@ import com.homeinterior.dto.BlueprintFile;
 import com.homeinterior.dto.ProjectDtos.*;
 import com.homeinterior.model.DesignSuggestion;
 import com.homeinterior.model.SafetyRecommendation;
+import com.homeinterior.service.LayoutScoringService;
 import com.homeinterior.service.ProjectService;
 import com.homeinterior.service.SafetyService;
 import com.homeinterior.service.SuggestionService;
@@ -26,11 +27,14 @@ public class ProjectController {
     private final ProjectService projectService;
     private final SuggestionService suggestionService;
     private final SafetyService safetyService;
+    private final LayoutScoringService layoutScoringService;
 
-    public ProjectController(ProjectService projectService, SuggestionService suggestionService, SafetyService safetyService) {
+    public ProjectController(ProjectService projectService, SuggestionService suggestionService, SafetyService safetyService,
+                             LayoutScoringService layoutScoringService) {
         this.projectService = projectService;
         this.suggestionService = suggestionService;
         this.safetyService = safetyService;
+        this.layoutScoringService = layoutScoringService;
     }
 
     @GetMapping
@@ -75,6 +79,11 @@ public class ProjectController {
                 .body(file.resource());
     }
 
+    @PostMapping("/{id}/blueprint/detect")
+    public List<RoomResponse> detectRoomsFromBlueprint(@PathVariable Long id, Principal principal) {
+        return projectService.detectRoomsFromBlueprint(id, principal.getName());
+    }
+
     @GetMapping("/{id}/rooms")
     public List<RoomResponse> rooms(@PathVariable Long id, Principal principal) {
         return projectService.rooms(id, principal.getName());
@@ -113,6 +122,16 @@ public class ProjectController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteFurniture(@PathVariable Long id, @PathVariable Long roomId, @PathVariable Long furnitureId, Principal principal) {
         projectService.deleteFurniture(id, roomId, furnitureId, principal.getName());
+    }
+
+    @PostMapping("/{id}/rooms/{roomId}/furniture/auto-arrange")
+    public List<FurnitureResponse> autoArrangeFurniture(@PathVariable Long id, @PathVariable Long roomId, Principal principal) {
+        return projectService.autoArrangeFurniture(id, roomId, principal.getName());
+    }
+
+    @GetMapping("/{id}/rooms/{roomId}/layout-score")
+    public RoomLayoutScoreResponse roomLayoutScore(@PathVariable Long id, @PathVariable Long roomId, Principal principal) {
+        return layoutScoringService.scoreRoom(id, roomId, principal.getName());
     }
 
     @GetMapping("/{id}/preferences")

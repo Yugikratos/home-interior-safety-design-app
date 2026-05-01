@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api';
-import type { Blueprint, FurnitureItem, Room } from '../types';
+import type { Blueprint, FurnitureItem, Room, RoomLayoutScore } from '../types';
 
 type Draft = { x: number; y: number; width: number; height: number };
 type ImageFrame = { left: number; top: number; width: number; height: number };
@@ -76,6 +76,10 @@ export function BlueprintMapper({ token, projectId, blueprint, rooms, focusRoomI
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+  const [arranging, setArranging] = useState(false);
+  const [layoutScore, setLayoutScore] = useState<RoomLayoutScore | null>(null);
+  const [scoreLoading, setScoreLoading] = useState(false);
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
@@ -165,6 +169,14 @@ export function BlueprintMapper({ token, projectId, blueprint, rooms, focusRoomI
   const shownDraft = draft ?? (mode === 'map' && selectedRoom && hasMapping(selectedRoom)
     ? getRoomMapping(selectedRoom)
     : null);
+  const issueTypeByFurnitureId = new Map<number, 'warning' | 'improve' | 'suggestion'>();
+  layoutScore?.suggestions.forEach((suggestion) => {
+    suggestion.furnitureIds.forEach((id) => {
+      const current = issueTypeByFurnitureId.get(id);
+      if (current === 'warning') return;
+      issueTypeByFurnitureId.set(id, suggestion.type);
+    });
+  });
 
   const pointFromClient = useCallback((clientX: number, clientY: number) => {
     const rect = imageRef.current?.getBoundingClientRect();
@@ -528,6 +540,21 @@ export function BlueprintMapper({ token, projectId, blueprint, rooms, focusRoomI
     };
   }, [persistFurniture, persistRoomMapping, pointFromClient]);
 
+  useEffect(() => {
+    if (!selectedRoom || !hasMapping(selectedRoom)) {
+      setLayoutScore(null);
+      return;
+    }
+    setScoreLoading(true);
+    const timeout = window.setTimeout(() => {
+      api.roomLayoutScore(token, projectId, selectedRoom.id)
+        .then(setLayoutScore)
+        .catch(() => setLayoutScore(null))
+        .finally(() => setScoreLoading(false));
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [projectId, selectedRoom, selectedRoom?.furniture, furnitureOverrides, token]);
+
   async function addFurniture(room: Room, type: string) {
     setError('');
     setStatus('');
@@ -544,6 +571,23 @@ export function BlueprintMapper({ token, projectId, blueprint, rooms, focusRoomI
       onMapped();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add furniture');
+    }
+  }
+
+  async function autoArrangeFurniture(room: Room) {
+    setError('');
+    setStatus('');
+    setArranging(true);
+    try {
+      await api.autoArrangeFurniture(token, projectId, room.id);
+      setSelectedFurnitureId(null);
+      setFurnitureOverrides({});
+      setStatus('Furniture auto-arranged for this room.');
+      onMapped();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not auto arrange furniture');
+    } finally {
+      setArranging(false);
     }
   }
 
@@ -686,6 +730,23 @@ export function BlueprintMapper({ token, projectId, blueprint, rooms, focusRoomI
     }
   }
 
+  async function autoDetectRooms() {
+    setError('');
+    setStatus('');
+    setDetecting(true);
+    try {
+      const detectedRooms = await api.detectBlueprintRooms(token, projectId);
+      setStatus(detectedRooms.length > rooms.length
+        ? 'Detected rooms were added to the blueprint. Select and refine them on the canvas.'
+        : 'No room rectangles were detected. Try tracing rooms manually.');
+      onMapped();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not auto detect rooms');
+    } finally {
+      setDetecting(false);
+    }
+  }
+
   return (
     <section className="panel section-card mapper-card">
       {!blueprint && <div className="empty-state">Upload a blueprint before mapping rooms.</div>}
@@ -703,6 +764,12 @@ export function BlueprintMapper({ token, projectId, blueprint, rooms, focusRoomI
               setDraft(null);
               setStatus('');
             }}>Map existing room</button>
+          </div>
+          <div className="auto-detect-bar">
+            <button type="button" className="primary" onClick={autoDetectRooms} disabled={detecting || !blueprint || !isImage}>
+              {detecting ? 'Detecting rooms...' : 'Auto Detect Rooms'}
+            </button>
+            <span>Creates editable detected room rectangles from the uploaded blueprint image.</span>
           </div>
           <div className="mapper-toolbar">
             {mode === 'map' ? (
@@ -732,7 +799,33 @@ export function BlueprintMapper({ token, projectId, blueprint, rooms, focusRoomI
                 {furnitureOptions.map((item) => (
                   <button type="button" key={item} onClick={() => addFurniture(selectedRoom, item)}>{item}</button>
                 ))}
+                <button type="button" className="primary" onClick={() => autoArrangeFurniture(selectedRoom)} disabled={arranging}>
+                  {arranging ? 'Arranging...' : 'Auto Arrange'}
+                </button>
               </div>
+            </div>
+          )}
+          {selectedRoom && hasMapping(selectedRoom) && (
+            <div className="layout-score-card">
+              <div>
+                <span>Room Score</span>
+                <strong>{scoreLoading ? '...' : layoutScore ? Math.round(layoutScore.overallScore) : '--'}</strong>
+              </div>
+              {layoutScore && (
+                <>
+                  <div className="score-breakdown">
+                    <span>Space {Math.round(layoutScore.breakdown.space)}</span>
+                    <span>Spacing {Math.round(layoutScore.breakdown.spacing)}</span>
+                    <span>Align {Math.round(layoutScore.breakdown.alignment)}</span>
+                    <span>Safety {Math.round(layoutScore.breakdown.safety)}</span>
+                  </div>
+                  <div className="live-suggestions">
+                    {layoutScore.suggestions.slice(0, 4).map((suggestion) => (
+                      <p key={suggestion.message} className={`live-suggestion ${suggestion.type}`}>{suggestion.message}</p>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
           {mode === 'map' && rooms.length === 0 && <div className="empty-state">No existing rooms yet. Use Trace new room to create rooms directly from the blueprint.</div>}
@@ -792,7 +885,8 @@ export function BlueprintMapper({ token, projectId, blueprint, rooms, focusRoomI
                         className={[
                           'furniture-item',
                           `furniture-${furnitureClass(item.type)}`,
-                          selectedFurnitureId === item.id ? 'selected' : ''
+                          selectedFurnitureId === item.id ? 'selected' : '',
+                          issueTypeByFurnitureId.get(item.id) ? `issue-${issueTypeByFurnitureId.get(item.id)}` : ''
                         ].filter(Boolean).join(' ')}
                         style={{
                           left: `${item.xPercent}%`,

@@ -31,6 +31,10 @@ public class ProjectDtos {
             Double rotationAngle) {}
     public record FurnitureResponse(Long id, String type, double xPercent, double yPercent, double widthPercent, double heightPercent, double rotationAngle) {}
     public record RoomResponse(Long id, String name, String type, double length, double width, Double mapX, Double mapY, Double mapWidth, Double mapHeight, List<FurnitureResponse> furniture) {}
+    public record BlueprintDetectionResponse(double xPercent, double yPercent, double widthPercent, double heightPercent, double confidence) {}
+    public record LayoutScoreBreakdown(double space, double spacing, double alignment, double safety) {}
+    public record LayoutSuggestionResponse(String message, String type, List<Long> furnitureIds) {}
+    public record RoomLayoutScoreResponse(Long roomId, double overallScore, LayoutScoreBreakdown breakdown, double unusedSpacePercent, List<LayoutSuggestionResponse> suggestions) {}
     public record PreferenceRequest(
             @NotBlank @Size(max = 80) String style,
             @NotBlank @Size(max = 80) String budget,

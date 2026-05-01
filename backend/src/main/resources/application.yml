@@ -22,3 +22,4 @@ app:
   jwt-expiration-ms: 86400000
   upload-dir: ${UPLOAD_DIR:uploads}
   frontend-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
+  blueprint-processor-url: ${BLUEPRINT_PROCESSOR_URL:http://localhost:8000}

@@ -1208,11 +1208,105 @@ small, .muted { color: var(--muted); }
   padding: 7px 10px;
 }
 
+.layout-score-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.layout-score-card > div:first-child {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.layout-score-card span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.layout-score-card strong {
+  color: #0f172a;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.score-breakdown {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.score-breakdown span {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 7px 8px;
+  text-align: center;
+}
+
+.live-suggestions {
+  display: grid;
+  gap: 6px;
+}
+
+.live-suggestion {
+  border-left: 4px solid #3b82f6;
+  border-radius: 8px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+  margin: 0;
+  padding: 8px 10px;
+}
+
+.live-suggestion.warning {
+  background: #fff7ed;
+  border-left-color: #f97316;
+  color: #9a3412;
+}
+
+.live-suggestion.improve {
+  background: #fffbeb;
+  border-left-color: #f59e0b;
+  color: #92400e;
+}
+
+.live-suggestion.suggestion {
+  background: #eff6ff;
+  border-left-color: #3b82f6;
+  color: #1e40af;
+}
+
 .mode-tabs {
   display: grid;
   gap: 8px;
   grid-template-columns: 1fr 1fr;
   margin-bottom: 10px;
+}
+
+.auto-detect-bar {
+  align-items: center;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+}
+
+.auto-detect-bar span {
+  color: #1e40af;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .mode-tabs .active {
@@ -1331,6 +1425,16 @@ small, .muted { color: var(--muted); }
 .furniture-item.selected {
   border-color: #1d4ed8;
   box-shadow: 0 10px 22px rgba(37, 99, 235, 0.25);
+}
+
+.furniture-item.issue-warning {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.22), 0 12px 20px rgba(127, 29, 29, 0.18);
+}
+
+.furniture-item.issue-improve {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.22), 0 12px 20px rgba(146, 64, 14, 0.14);
 }
 
 .furniture-item:active {

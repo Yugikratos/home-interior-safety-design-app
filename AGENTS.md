@@ -2,18 +2,20 @@
 
 ## Project Structure & Module Organization
 
-This repository contains a Phase 1.6+ full-stack MVP.
+This repository contains a Phase 2 full-stack MVP.
 
 - `frontend/`: React + Vite + TypeScript app. Source lives in `frontend/src`, with pages in `src/pages`, reusable UI in `src/components`, API calls in `src/api.ts`, and shared types in `src/types.ts`.
 - `backend/`: Spring Boot Java app. Source lives in `backend/src/main/java/com/homeinterior`, organized by `controller`, `service`, `repository`, `model`, `dto`, `security`, `config`, and `exception`.
+- `blueprint-processor/`: Python FastAPI service using OpenCV for blueprint room detection with edges, Hough wall lines, contours, and confidence scoring.
 - `backend/src/test`: Spring Boot tests and test configuration.
 - `assets/`: README screenshot placeholders and presentation images.
-- `docker-compose.yml`: PostgreSQL, backend, and frontend services.
+- `docker-compose.yml`: PostgreSQL, backend, frontend, and blueprint processor services.
 - `.env.example`: safe sample environment values. Do not commit `.env`.
 
 ## Build, Test, and Development Commands
 
-- `docker compose up --build`: build and run PostgreSQL, backend, and frontend.
+- `docker compose up -d`: run already-built PostgreSQL, backend, frontend, and blueprint processor services.
+- `docker compose up --build`: rebuild and run PostgreSQL, backend, frontend, and blueprint processor.
 - `docker compose build`: build service images without starting them.
 - `cd frontend && npm install`: install frontend dependencies.
 - `cd frontend && npm run dev`: run the Vite dev server.
@@ -29,7 +31,7 @@ Use TypeScript strict mode and React function components. Name components in `Pa
 
 Use Java 17 conventions in the backend: classes in `PascalCase`, methods and fields in `camelCase`, and package names lowercase. Keep controller logic thin; route business rules through services and repositories.
 
-Room and furniture layout coordinates are persisted as percentages. Keep blueprint room mapping relative to the rendered blueprint image bounds, and keep furniture coordinates relative to the containing room.
+Room and furniture layout coordinates are persisted as percentages. Keep blueprint room mapping relative to the rendered blueprint image bounds, and keep furniture coordinates relative to the containing room. Blueprint auto-detection is an OpenCV helper, not an AI model. Keep Phase 2 intelligence rule-based and layout-aware.
 
 ## Testing Guidelines
 

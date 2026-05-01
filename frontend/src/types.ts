@@ -90,4 +90,25 @@ export type SafetyRecommendation = {
   category: string;
   recommendation: string;
   required: boolean;
+  priority?: 'High' | 'Medium' | 'Low';
+  explanation?: string;
+};
+
+export type LayoutSuggestion = {
+  message: string;
+  type: 'improve' | 'warning' | 'suggestion';
+  furnitureIds: number[];
+};
+
+export type RoomLayoutScore = {
+  roomId: number;
+  overallScore: number;
+  breakdown: {
+    space: number;
+    spacing: number;
+    alignment: number;
+    safety: number;
+  };
+  unusedSpacePercent: number;
+  suggestions: LayoutSuggestion[];
 };

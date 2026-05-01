@@ -17,7 +17,9 @@ function groupName(category: string) {
   return 'Fire';
 }
 
-function priority(category: string) {
+function priority(item: SafetyRecommendation) {
+  if (item.priority) return item.priority;
+  const category = item.category;
   const group = groupName(category);
   if (group === 'Fire' || group === 'Smoke Detection') return 'High';
   if (group === 'Exit Path') return 'Medium';
@@ -36,7 +38,7 @@ export function SafetyChecklist({ items, hasRooms }: { items: SafetyRecommendati
     group,
     items: items.filter((item) => groupName(item.category) === group)
   }));
-  const highPriorityCount = items.filter((item) => priority(item.category) === 'High').length;
+  const highPriorityCount = items.filter((item) => priority(item) === 'High').length;
 
   return (
     <section className="panel section-card result-card">
@@ -65,13 +67,14 @@ export function SafetyChecklist({ items, hasRooms }: { items: SafetyRecommendati
                 {items.length === 0 && <p className="muted">No Phase 1.5 recommendation for this category yet.</p>}
                 <div className="checklist">
                   {items.map((item) => (
-                    <label key={`${item.category}-${item.recommendation}`} className={`check-row priority-row-${priority(item.category).toLowerCase()}`}>
+                    <label key={`${item.category}-${item.recommendation}`} className={`check-row priority-row-${priority(item).toLowerCase()}`}>
                       <input type="checkbox" />
                       <span className="safety-icon">{safetyIcon(item.category)}</span>
                       <span>
                         <strong>{item.category}</strong>
                         {item.recommendation}
-                        <em className={`priority priority-${priority(item.category).toLowerCase()}`}>{priority(item.category)}</em>
+                        {item.explanation && <small>{item.explanation}</small>}
+                        <em className={`priority priority-${priority(item).toLowerCase()}`}>{priority(item)}</em>
                       </span>
                     </label>
                   ))}
