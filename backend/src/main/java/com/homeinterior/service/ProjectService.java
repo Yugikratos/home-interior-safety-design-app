@@ -1,6 +1,7 @@
 package com.homeinterior.service;
 
 import com.homeinterior.config.AppProperties;
+import com.homeinterior.dto.BlueprintFile;
 import com.homeinterior.dto.ProjectDtos.*;
 import com.homeinterior.exception.ApiNotFoundException;
 import com.homeinterior.exception.ApiValidationException;
@@ -14,6 +15,8 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -98,6 +101,19 @@ public class ProjectService {
         Blueprint saved = blueprintRepository.save(blueprint);
         deletePreviousBlueprint(uploadDir, previousFile, safeName);
         return toBlueprintResponse(saved);
+    }
+
+    public BlueprintFile blueprintFile(Long projectId, String email) throws IOException {
+        ownedProject(projectId, email);
+        Blueprint blueprint = blueprintRepository.findByProjectId(projectId)
+                .orElseThrow(() -> new ApiNotFoundException("Blueprint not found"));
+        Path uploadDir = Path.of(properties.getUploadDir()).toAbsolutePath().normalize();
+        Path filePath = uploadDir.resolve(blueprint.getStoredFileName()).normalize();
+        if (!filePath.startsWith(uploadDir) || !Files.exists(filePath)) {
+            throw new ApiNotFoundException("Blueprint file not found");
+        }
+        Resource resource = new UrlResource(filePath.toUri());
+        return new BlueprintFile(resource, blueprint.getOriginalFileName(), blueprint.getContentType());
     }
 
     public List<RoomResponse> rooms(Long projectId, String email) {

@@ -1,5 +1,6 @@
 package com.homeinterior.controller;
 
+import com.homeinterior.dto.BlueprintFile;
 import com.homeinterior.dto.ProjectDtos.*;
 import com.homeinterior.model.DesignSuggestion;
 import com.homeinterior.model.SafetyRecommendation;
@@ -10,7 +11,12 @@ import jakarta.validation.Valid;
 import java.io.IOException;
 import java.security.Principal;
 import java.util.List;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -57,6 +63,16 @@ public class ProjectController {
     @PostMapping("/{id}/blueprint")
     public BlueprintResponse uploadBlueprint(@PathVariable Long id, @RequestParam("file") MultipartFile file, Principal principal) throws IOException {
         return projectService.uploadBlueprint(id, file, principal.getName());
+    }
+
+    @GetMapping("/{id}/blueprint/file")
+    public ResponseEntity<Resource> blueprintFile(@PathVariable Long id, Principal principal) throws IOException {
+        BlueprintFile file = projectService.blueprintFile(id, principal.getName());
+        MediaType mediaType = file.contentType() == null ? MediaType.APPLICATION_OCTET_STREAM : MediaType.parseMediaType(file.contentType());
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline().filename(file.originalFileName()).build().toString())
+                .body(file.resource());
     }
 
     @GetMapping("/{id}/rooms")

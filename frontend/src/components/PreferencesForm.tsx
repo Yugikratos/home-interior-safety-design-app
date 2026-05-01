@@ -12,6 +12,7 @@ export function PreferencesForm({ token, projectId, preference, onSaved }: {
   const [budget, setBudget] = useState(preference?.budget ?? 'Medium');
   const [colorPalette, setColorPalette] = useState(preference?.colorPalette ?? 'Neutral');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (preference) {
@@ -24,17 +25,26 @@ export function PreferencesForm({ token, projectId, preference, onSaved }: {
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError('');
+    setSaving(true);
     try {
       await api.savePreference(token, projectId, { style, budget, colorPalette });
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save preferences');
+    } finally {
+      setSaving(false);
     }
   }
 
   return (
-    <form className="panel stack" onSubmit={submit}>
-      <h2>Preferences</h2>
+    <form className="panel stack section-card" onSubmit={submit}>
+      <div className="section-title">
+        <span className="section-icon">ST</span>
+        <div>
+          <h2>Preferences</h2>
+          <p>Set the design direction and budget level.</p>
+        </div>
+      </div>
       <label>Style
         <select value={style} onChange={(e) => setStyle(e.target.value)}>
           <option>Modern</option>
@@ -52,7 +62,7 @@ export function PreferencesForm({ token, projectId, preference, onSaved }: {
       </label>
       <label>Color palette<input value={colorPalette} onChange={(e) => setColorPalette(e.target.value)} /></label>
       {error && <p className="error">{error}</p>}
-      <button type="submit">Save preferences</button>
+      <button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save preferences'}</button>
     </form>
   );
 }

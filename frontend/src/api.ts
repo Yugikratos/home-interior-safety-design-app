@@ -23,6 +23,14 @@ function messageFromErrorBody(error: unknown, fallback: string) {
   return fallback;
 }
 
+function friendlyStatusMessage(status: number, fallback: string) {
+  if (status === 401) return 'Your session expired. Please log in again.';
+  if (status === 403) return 'You do not have permission to perform this action.';
+  if (status === 404) return 'The requested item could not be found.';
+  if (status >= 500) return 'Server error. Please try again in a moment.';
+  return fallback;
+}
+
 async function request<T>(path: string, token?: string, options: RequestInit = {}): Promise<T> {
   const headers: HeadersInit = {
     ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
@@ -34,7 +42,7 @@ async function request<T>(path: string, token?: string, options: RequestInit = {
       unauthorizedHandler();
     }
     const error = await response.json().catch(() => ({ error: response.statusText }));
-    throw new ApiError(messageFromErrorBody(error, 'Request failed'), response.status);
+    throw new ApiError(messageFromErrorBody(error, friendlyStatusMessage(response.status, 'Request failed')), response.status);
   }
   if (response.status === 204) {
     return undefined as T;
@@ -61,6 +69,19 @@ export const api = {
     const form = new FormData();
     form.append('file', file);
     return request(`/projects/${id}/blueprint`, token, { method: 'POST', body: form });
+  },
+  blueprintFile: async (token: string, id: number) => {
+    const response = await fetch(`${API_URL}/projects/${id}/blueprint/file`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      if (response.status === 401 && unauthorizedHandler) {
+        unauthorizedHandler();
+      }
+      const error = await response.json().catch(() => ({ error: response.statusText }));
+      throw new ApiError(messageFromErrorBody(error, friendlyStatusMessage(response.status, 'Could not load blueprint')), response.status);
+    }
+    return response.blob();
   },
   addRoom: (token: string, id: number, payload: { name: string; type: string; length: number; width: number }) =>
     request<Room>(`/projects/${id}/rooms`, token, { method: 'POST', body: JSON.stringify(payload) }),

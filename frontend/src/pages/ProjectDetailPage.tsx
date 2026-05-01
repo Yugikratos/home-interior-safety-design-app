@@ -17,11 +17,14 @@ export function ProjectDetailPage({ token, projectId, onBack }: { token: string;
   const [error, setError] = useState('');
   const [suggestionError, setSuggestionError] = useState('');
   const [safetyError, setSafetyError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setError('');
+    setLoading(true);
     const projectDetail = await api.projectDetail(token, projectId);
     setDetail(projectDetail);
+    setLoading(false);
 
     api.suggestions(token, projectId)
       .then((data) => {
@@ -39,23 +42,37 @@ export function ProjectDetailPage({ token, projectId, onBack }: { token: string;
   }, [projectId, token]);
 
   useEffect(() => {
-    load().catch((err) => setError(err.message));
+    load().catch((err) => {
+      setError(err.message);
+      setLoading(false);
+    });
   }, [load]);
 
   if (!detail) {
-    return <main className="page"><button onClick={onBack}>Back</button><p>{error || 'Loading project...'}</p></main>;
+    return (
+      <main className="page">
+        <button className="text-button" onClick={onBack}>Back to projects</button>
+        <div className="empty-state">{error || 'Loading project workspace...'}</div>
+      </main>
+    );
   }
 
   return (
     <main className="page">
-      <section className="page-header with-action">
+      <section className="page-header hero-header">
         <div>
           <button className="text-button" onClick={onBack}>Back to projects</button>
+          <span className="eyebrow">Project detail</span>
           <h1>{detail.project.name}</h1>
-          <p>{detail.project.description}</p>
+          <p>{detail.project.description || 'No project description added yet.'}</p>
+        </div>
+        <div className="metric-card">
+          <strong>{detail.rooms.length}</strong>
+          <span>Rooms mapped</span>
         </div>
       </section>
       {error && <p className="error">{error}</p>}
+      {loading && <div className="empty-state">Refreshing project data...</div>}
       <section className="workspace">
         <div className="left-rail stack">
           <BlueprintUpload token={token} projectId={projectId} blueprint={detail.project.blueprint} onUploaded={load} />
@@ -63,7 +80,7 @@ export function ProjectDetailPage({ token, projectId, onBack }: { token: string;
           <PreferencesForm token={token} projectId={projectId} preference={detail.preference} onSaved={load} />
         </div>
         <div className="main-area stack">
-          <Layout2D rooms={detail.rooms} />
+          <Layout2D token={token} projectId={projectId} blueprint={detail.project.blueprint} rooms={detail.rooms} />
           <RoomList token={token} projectId={projectId} rooms={detail.rooms} onEdit={setEditingRoom} onChanged={load} />
           {suggestionError && <p className="error">{suggestionError}</p>}
           <SuggestionsView suggestions={suggestions} />

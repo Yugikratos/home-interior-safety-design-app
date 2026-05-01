@@ -14,6 +14,7 @@ export function RoomForm({ token, projectId, editingRoom, onCancelEdit, onSaved 
   const [length, setLength] = useState(12);
   const [width, setWidth] = useState(10);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (editingRoom) {
@@ -35,6 +36,7 @@ export function RoomForm({ token, projectId, editingRoom, onCancelEdit, onSaved 
       setError('Length and width must be greater than zero');
       return;
     }
+    setSaving(true);
     try {
       const payload = { name: name.trim(), type, length, width };
       if (editingRoom) {
@@ -49,6 +51,8 @@ export function RoomForm({ token, projectId, editingRoom, onCancelEdit, onSaved 
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save room');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -62,8 +66,14 @@ export function RoomForm({ token, projectId, editingRoom, onCancelEdit, onSaved 
   }
 
   return (
-    <form className="panel stack" onSubmit={submit}>
-      <h2>{editingRoom ? 'Edit room' : 'Room'}</h2>
+    <form className="panel stack section-card" onSubmit={submit}>
+      <div className="section-title">
+        <span className="section-icon">RM</span>
+        <div>
+          <h2>{editingRoom ? 'Edit room' : 'Add room'}</h2>
+          <p>Capture room type and dimensions for the 2D layout.</p>
+        </div>
+      </div>
       <label>Name<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
       <label>Type
         <select value={type} onChange={(e) => setType(e.target.value)}>
@@ -79,7 +89,7 @@ export function RoomForm({ token, projectId, editingRoom, onCancelEdit, onSaved 
         <label>Width<input type="number" min="1" step="0.1" value={width} onChange={(e) => setWidth(Number(e.target.value))} /></label>
       </div>
       {error && <p className="error">{error}</p>}
-      <button type="submit">{editingRoom ? 'Save room' : 'Add room'}</button>
+      <button type="submit" disabled={saving}>{saving ? 'Saving...' : editingRoom ? 'Save room' : 'Add room'}</button>
       {editingRoom && <button type="button" onClick={cancelEdit}>Cancel edit</button>}
     </form>
   );

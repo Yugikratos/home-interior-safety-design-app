@@ -8,9 +8,17 @@ export function Dashboard({ token, onOpenProject }: { token: string; onOpenProje
   const [description, setDescription] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   async function load() {
-    setProjects(await api.projects(token));
+    setLoading(true);
+    try {
+      setProjects(await api.projects(token));
+      setError('');
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -20,6 +28,7 @@ export function Dashboard({ token, onOpenProject }: { token: string; onOpenProje
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError('');
+    setSaving(true);
     try {
       const payload = { name: name.trim(), description };
       if (!payload.name) {
@@ -37,6 +46,8 @@ export function Dashboard({ token, onOpenProject }: { token: string; onOpenProje
         : [project, ...current]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save project');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -68,8 +79,16 @@ export function Dashboard({ token, onOpenProject }: { token: string; onOpenProje
 
   return (
     <main className="page">
-      <section className="page-header">
-        <h1>Projects</h1>
+      <section className="page-header hero-header">
+        <div>
+          <span className="eyebrow">Workspace</span>
+          <h1>Design projects</h1>
+          <p>Upload blueprints, define rooms, and review rule-based design and safety guidance.</p>
+        </div>
+        <div className="metric-card">
+          <strong>{projects.length}</strong>
+          <span>Active projects</span>
+        </div>
       </section>
       <section className="two-column">
         <form onSubmit={submit} className="panel stack">
@@ -77,13 +96,15 @@ export function Dashboard({ token, onOpenProject }: { token: string; onOpenProje
           <label>Project name<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
           <label>Description<textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} /></label>
           {error && <p className="error">{error}</p>}
-          <button className="primary" type="submit">{editingId ? 'Save project' : 'Create project'}</button>
+          <button className="primary" type="submit" disabled={saving}>{saving ? 'Saving...' : editingId ? 'Save project' : 'Create project'}</button>
           {editingId && <button type="button" onClick={cancelEdit}>Cancel edit</button>}
         </form>
         <div className="project-grid">
+          {loading && <div className="empty-state">Loading projects...</div>}
           {projects.map((project) => (
             <article key={project.id} className="project-card">
               <button className="project-open" onClick={() => onOpenProject(project.id)}>
+                <span className="project-icon">PLAN</span>
                 <strong>{project.name}</strong>
                 <span>{project.description || 'No description'}</span>
                 <small>{project.blueprint ? `Blueprint: ${project.blueprint.originalFileName}` : 'No blueprint uploaded'}</small>
@@ -94,7 +115,7 @@ export function Dashboard({ token, onOpenProject }: { token: string; onOpenProje
               </div>
             </article>
           ))}
-          {projects.length === 0 && <div className="empty-state">Create a project to start designing.</div>}
+          {!loading && projects.length === 0 && <div className="empty-state">Create a project to start designing.</div>}
         </div>
       </section>
     </main>

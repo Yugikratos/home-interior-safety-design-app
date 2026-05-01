@@ -10,6 +10,7 @@ export function BlueprintUpload({ token, projectId, blueprint, onUploaded }: {
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -26,22 +27,34 @@ export function BlueprintUpload({ token, projectId, blueprint, onUploaded }: {
       setError('Blueprint file must be 10MB or smaller');
       return;
     }
+    setUploading(true);
     try {
       await api.uploadBlueprint(token, projectId, file);
       setFile(null);
       onUploaded();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(false);
     }
   }
 
   return (
-    <form className="panel stack" onSubmit={submit}>
-      <h2>Blueprint</h2>
-      {blueprint && <p className="muted">{blueprint.originalFileName} ({Math.round(blueprint.sizeBytes / 1024)} KB)</p>}
+    <form className="panel stack section-card" onSubmit={submit}>
+      <div className="section-title">
+        <span className="section-icon">BP</span>
+        <div>
+          <h2>Blueprint Preview</h2>
+          <p>{blueprint ? 'Current uploaded plan' : 'Upload a floor plan to anchor the project.'}</p>
+        </div>
+      </div>
+      <div className="blueprint-preview">
+        <strong>{blueprint ? blueprint.originalFileName : 'No blueprint uploaded'}</strong>
+        <span>{blueprint ? `${Math.round(blueprint.sizeBytes / 1024)} KB` : 'PDF, PNG, JPG, or JPEG up to 10MB'}</span>
+      </div>
       <input type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
       {error && <p className="error">{error}</p>}
-      <button type="submit" disabled={!file}>Upload blueprint</button>
+      <button type="submit" disabled={!file || uploading}>{uploading ? 'Uploading...' : 'Upload blueprint'}</button>
     </form>
   );
 }
